@@ -142,7 +142,7 @@
                     $('#txtWebInterfacePassword', page).val(config.WebInterfacePassword || "");
                     page.querySelector('#chkUseSecureHTTPS').checked = config.UseSecureHTTPS || false;
                     page.querySelector('#chkOnlyOneBouquet').checked = config.OnlyOneBouquet || false;
-                    page.querySelector('#txtTVBouquet', page).val(config.TVBouquet || "");
+                    page.querySelector('#txtTVBouquet', page).value = config.TVBouquet || "";
                     page.querySelector('#chkZapToChannel').checked = config.ZapToChannel || false;
                     page.querySelector('#chkFetchPiconsFromWebInterface').checked = config.FetchPiconsFromWebInterface || false;
                     $('#txtPiconsPath', page).val(config.PiconsPath || "");
