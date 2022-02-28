@@ -2,23 +2,25 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;</TargetFrameworks>
-    <AssemblyVersion>3.2.2</AssemblyVersion>
-    <FileVersion>3.2.2</FileVersion>
+    <AssemblyVersion>3.2.3</AssemblyVersion>
+    <FileVersion>3.2.3</FileVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Configuration\configPage.html" />
     <None Remove="Images\thumb.png" />
+    <None Remove="web\vuplus.html" />
+    <None Remove="web\vuplus.js" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Configuration\configPage.html" />
     <EmbeddedResource Include="Images\thumb.png" />
+    <EmbeddedResource Include="web\vuplus.html" />
+    <EmbeddedResource Include="web\vuplus.js" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="mediabrowser.server.core" Version="4.1.0.26" />
-    <PackageReference Include="System.Memory" Version="4.5.2" />
+    <PackageReference Include="mediabrowser.server.core" Version="4.7.0.27" />
+    <PackageReference Include="System.Memory" Version="4.5.3" />
   </ItemGroup>
 
 </Project>

@@ -27,8 +27,7 @@ namespace MediaBrowser.Plugins.VuPlus.Helpers
     {
         public static void DebugInformation(ILogger logger, string message)
         {
-            var config = Plugin.Instance.Configuration;
-            bool enableDebugLogging = config.EnableDebugLogging;
+            bool enableDebugLogging = false;
 
             if (enableDebugLogging)
             {

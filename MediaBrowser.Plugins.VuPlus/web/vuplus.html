@@ -1,0 +1,73 @@
+﻿<div is="emby-scroller" class="view flex flex-direction-column scrollFrameY flex-grow" data-mousewheel="true" data-horizontal="false" data-centerfocus="card" data-controller="__plugin/vuplusjs" data-title="${HeaderTVSourceSetup}">
+    <div class="scrollSlider flex-grow flex-direction-column padded-left padded-left-page padded-right padded-top-page padded-bottom-page settingsContainer">
+        <form class="auto-center">
+            <div class="verticalSection">
+
+                <div>
+                    <h3 class="typeName">VuPlus</h3>
+                </div>
+
+                <div class="inputContainer fldPath">
+                    <div class="flex align-items-center">
+                        <div class="flex-grow">
+                            <input is="emby-input" type="text" class="txtDevicePath" label="VuPlus IP Address and Web Interface Port:" required="required" autocomplete="off" />
+                            <div class="fieldDescription">
+                                The host name (address) or ip address of your receiver, along with the port number of the VuPlus web interface, for example http://localhost:8000
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="inputContainer fldFriendlyName hide">
+                    <input is="emby-input" type="text" class="txtFriendlyName" label="${LabelFriendlyName}" autocomplete="off" />
+                </div>
+
+                <div class="inputContainer">
+                    <input is="emby-input" class="txtStreamingPort" type="text" label="Vu+ streaming port:" required="required" />
+                    <div class="fieldDescription">
+                        The Streaming port of your receiver eg. 8001
+                    </div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" class="txtWebInterfaceUsername" type="text" label="Vu+ Web Interface username:" />
+                    <div class="fieldDescription">
+                        The web Interface username of your receiver (optional)
+                    </div>
+                </div>
+                <div class="inputContainer">
+                    <input is="emby-input" class="txtWebInterfacePassword" type="text" label="Vu+ Web Interface password:" />
+                    <div class="fieldDescription">
+                        The web Interface password of your receiver (optional)
+                    </div>
+                </div>
+
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label>
+                        <input is="emby-checkbox" type="checkbox" class="chkOnlyOneBouquet" />
+                        <span>Fetch Only one TV bouquet</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">
+                        Limit channels to only those contained within the specified TV Bouquet below (optional)
+                    </div>
+                </div>
+
+
+                <div class="inputContainer">
+                    <input is="emby-input" class="txtTVBouquet" type="text" label="Vu+ TVBouquet:" />
+                    <div class="fieldDescription">
+                        The TV Bouquet to load channels for (optional)
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button is="emby-button" type="submit" class="raised button-submit block">
+                    <span>${Save}</span>
+                </button>
+                <button is="emby-button" type="button" class="raised button-cancel block btnCancel">
+                    <span>${Cancel}</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

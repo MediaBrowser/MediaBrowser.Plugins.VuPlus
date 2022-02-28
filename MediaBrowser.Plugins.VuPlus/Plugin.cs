@@ -4,31 +4,27 @@ using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
-using MediaBrowser.Plugins.VuPlus.Configuration;
 using System.IO;
 using MediaBrowser.Model.Drawing;
+using System.Linq;
 
 namespace MediaBrowser.Plugins.VuPlus
 {
     /// <summary>
     /// Class Plugin
     /// </summary>
-    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IHasThumbImage
+    public class Plugin : BasePlugin, IHasWebPages, IHasThumbImage, IHasTranslations
     {
-        public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer)
-            : base(applicationPaths, xmlSerializer)
-        {
-            Instance = this;
-        }
-
         /// <summary>
         /// Gets the name of the plugin
         /// </summary>
         /// <value>The name.</value>
         public override string Name
         {
-            get { return "VuPlus"; }
+            get { return StaticName; }
         }
+
+        public static string StaticName = "VuPlus";
 
         /// <summary>
         /// Gets the description.
@@ -56,16 +52,37 @@ namespace MediaBrowser.Plugins.VuPlus
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
-            return new[]
+            return new PluginPageInfo[]
             {
                 new PluginPageInfo
                 {
                     Name = "vuplus",
-                    EmbeddedResourcePath = "MediaBrowser.Plugins.VuPlus.Configuration.configPage.html"
+                    EmbeddedResourcePath = GetType().Namespace + ".web.vuplus.html",
+                    IsMainConfigPage = false
+                },
+                new PluginPageInfo
+                {
+                    Name = "vuplusjs",
+                    EmbeddedResourcePath = GetType().Namespace + ".web.vuplus.js"
                 }
             };
         }
 
+        public TranslationInfo[] GetTranslations()
+        {
+            var basePath = GetType().Namespace + ".strings.";
+
+            return GetType()
+                .Assembly
+                .GetManifestResourceNames()
+                .Where(i => i.StartsWith(basePath, StringComparison.OrdinalIgnoreCase))
+                .Select(i => new TranslationInfo
+                {
+                    Locale = Path.GetFileNameWithoutExtension(i.Substring(basePath.Length)),
+                    EmbeddedResourcePath = i
+
+                }).ToArray();
+        }
         public Stream GetThumbImage()
         {
             var type = GetType();
