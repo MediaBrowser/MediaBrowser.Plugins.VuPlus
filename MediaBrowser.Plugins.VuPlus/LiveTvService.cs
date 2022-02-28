@@ -591,8 +591,6 @@ namespace MediaBrowser.Plugins.VuPlus
             Logger.Info("[VuPlus] Start GetProgramsAsync");
             await EnsureConnectionAsync(tuner, config, cancellationToken).ConfigureAwait(false);
 
-            Random rnd = new Random();
-
             var imagePath = "";
             var imageUrl = "";
 
@@ -721,10 +719,7 @@ namespace MediaBrowser.Plugins.VuPlus
                                 programInfo.ImagePath = imagePath;
                                 programInfo.ImageUrl = imageUrl;
 
-                                programInfo.ChannelId = e2eventservicereference;
-
-                                // for some reason the Id appears to have to be unique so will make it so
-                                programInfo.Id = e2eventservicereference + "~" + e2eventid + "~" + count + "~" + rnd.Next();
+                                programInfo.ChannelId = channelId;
 
                                 programInfo.Overview = e2eventdescriptionextended;
 
@@ -733,6 +728,9 @@ namespace MediaBrowser.Plugins.VuPlus
 
                                 programInfo.StartDate = sdate.ToUniversalTime();
                                 programInfo.EndDate = edate.ToUniversalTime();
+
+                                programInfo.ShowId = e2eventid;
+                                programInfo.Id = GetProgramEntryId(programInfo.ShowId, programInfo.StartDate, programInfo.ChannelId);
 
                                 List<String> genre = new List<String>();
                                 genre.Add("Unknown");
