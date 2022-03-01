@@ -126,7 +126,7 @@ namespace MediaBrowser.Plugins.VuPlus
             Logger.Info("[VuPlus] Start InitiateSession, validates connection and returns Bouquet reference if required");
             //await EnsureConnectionAsync(cancellationToken).ConfigureAwait(false);
 
-            var baseUrl = tuner.Url;
+            var baseUrl = tuner.Url.TrimEnd('/');
 
             var url = string.Format("{0}/web/getservices", baseUrl);
             Logger.Info("[VuPlus] InitiateSession url: {0}", url);
@@ -165,7 +165,10 @@ namespace MediaBrowser.Plugins.VuPlus
                         {
                             foreach (XmlNode xmlNode in e2services)
                             {
-                                var channelInfo = new ChannelInfo();
+                                var channelInfo = new ChannelInfo()
+                                {
+                                    TunerHostId = tuner.Id
+                                };
 
                                 var e2servicereference = "?";
                                 var e2servicename = "?";
@@ -236,7 +239,7 @@ namespace MediaBrowser.Plugins.VuPlus
             Logger.Info("[VuPlus] Start GetChannelsAsync, retrieve all channels");
             var tvBouquetSRef = await EnsureConnectionAsync(tuner, config, cancellationToken).ConfigureAwait(false);
 
-            var baseUrl = tuner.Url;
+            var baseUrl = tuner.Url.TrimEnd('/');
 
             var baseUrlPicon = baseUrl;
 
@@ -398,7 +401,7 @@ namespace MediaBrowser.Plugins.VuPlus
             Logger.Info("[VuPlus] Start GetChannelsForTVBouquetAsync, retrieve all channels for TV Bouquet " + sRef);
             await EnsureConnectionAsync(tuner, config, cancellationToken).ConfigureAwait(false);
 
-            var baseUrl = tuner.Url;
+            var baseUrl = tuner.Url.TrimEnd('/');
 
             var baseUrlPicon = AddAuthToUrl(baseUrl, config);
 
@@ -522,7 +525,7 @@ namespace MediaBrowser.Plugins.VuPlus
 
         private string GetStreamingBaseUrl(TunerHostInfo tuner, VuPlusTunerOptions config)
         {
-            var baseUrl = tuner.Url;
+            var baseUrl = tuner.Url.TrimEnd('/');
 
             if (Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri uri))
             {
@@ -532,7 +535,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 return builder.Uri.ToString();
             }
 
-            return baseUrl;
+            return baseUrl.TrimEnd('/');
         }
 
         protected override Task<List<MediaSourceInfo>> GetChannelStreamMediaSources(TunerHostInfo tuner, BaseItem dbChannnel, ChannelInfo providerChannel, CancellationToken cancellationToken)
@@ -594,7 +597,7 @@ namespace MediaBrowser.Plugins.VuPlus
             var imagePath = "";
             var imageUrl = "";
 
-            var baseUrl = tuner.Url;
+            var baseUrl = tuner.Url.TrimEnd('/');
 
             var url = string.Format("{0}/web/epgservice?sRef={1}", baseUrl, channelOid);
             Logger.Info("[VuPlus] GetProgramsAsync url: {0}", url);
