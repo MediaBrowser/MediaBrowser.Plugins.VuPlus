@@ -221,7 +221,7 @@ namespace MediaBrowser.Plugins.VuPlus
                     builder.UserName = config.WebInterfaceUsername;
                     builder.Password = config.WebInterfacePassword;
 
-                    return builder.Uri.ToString();
+                    return builder.Uri.ToString().TrimEnd('/');
                 }
             }
             return url;
@@ -562,28 +562,33 @@ namespace MediaBrowser.Plugins.VuPlus
 
             var mediaSource = new MediaSourceInfo
             {
-                Id = Guid.NewGuid().ToString("N"),
                 Path = streamUrl,
                 Protocol = MediaProtocol.Http,
                 MediaStreams = new List<MediaStream>
-                        {
-                            new MediaStream
-                            {
-                                Type = MediaStreamType.Video,
-                                // Set the index to -1 because we don't know the exact index of the video stream within the container
-                                Index = -1,
+                {
+                    new MediaStream
+                    {
+                        Type = MediaStreamType.Video,
+                        // Set the index to -1 because we don't know the exact index of the video stream within the container
+                        Index = -1,
+                        IsInterlaced = true
+                    },
+                    new MediaStream
+                    {
+                        Type = MediaStreamType.Audio,
+                        // Set the index to -1 because we don't know the exact index of the audio stream within the container
+                        Index = -1
+                    }
+                },
+                RequiresOpening = true,
+                RequiresClosing = true,
 
-                                // Set to true if unknown to enable deinterlacing
-                                IsInterlaced = true
+                Id = streamUrl.GetMD5().ToString("N"),
 
-                            },
-                            new MediaStream
-                            {
-                                Type = MediaStreamType.Audio,
-                                // Set the index to -1 because we don't know the exact index of the audio stream within the container
-                                Index = -1
-                            }
-                        }
+                SupportsDirectPlay = false,
+                SupportsDirectStream = true,
+                SupportsTranscoding = true,
+                IsInfiniteStream = true
             };
 
             return Task.FromResult(new List<MediaSourceInfo>() { mediaSource });
