@@ -294,7 +294,10 @@ namespace MediaBrowser.Plugins.VuPlus
                             XmlNodeList e2services = xml.GetElementsByTagName("e2service");
                             foreach (XmlNode xmlNode in e2services)
                             {
-                                var channelInfo = new ChannelInfo();
+                                var channelInfo = new ChannelInfo()
+                                {
+                                    TunerHostId = tuner.Id
+                                };
                                 var e2servicereference = "?";
                                 var e2servicename = "?";
 
@@ -327,7 +330,10 @@ namespace MediaBrowser.Plugins.VuPlus
                             XmlNodeList e2services = xml.GetElementsByTagName("e2service");
                             foreach (XmlNode xmlNode in e2services)
                             {
-                                var channelInfo = new ChannelInfo();
+                                var channelInfo = new ChannelInfo()
+                                {
+                                    TunerHostId = tuner.Id
+                                };
 
                                 var e2servicereference = "?";
                                 var e2servicename = "?";
@@ -444,7 +450,10 @@ namespace MediaBrowser.Plugins.VuPlus
                         XmlNodeList e2services = xml.GetElementsByTagName("e2service");
                         foreach (XmlNode xmlNode in e2services)
                         {
-                            var channelInfo = new ChannelInfo();
+                            var channelInfo = new ChannelInfo()
+                            {
+                                TunerHostId = tuner.Id
+                            };
 
                             var e2servicereference = "?";
                             var e2servicename = "?";
@@ -532,7 +541,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 var builder = new UriBuilder(uri);
                 builder.Port = config.StreamingPort;
 
-                return builder.Uri.ToString();
+                return builder.Uri.ToString().TrimEnd('/');
             }
 
             return baseUrl.TrimEnd('/');
