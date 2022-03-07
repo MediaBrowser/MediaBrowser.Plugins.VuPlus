@@ -25,6 +25,7 @@ using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.MediaEncoding;
 using MediaBrowser.Model.IO;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Entities;
 
 namespace MediaBrowser.Plugins.VuPlus
@@ -35,13 +36,11 @@ namespace MediaBrowser.Plugins.VuPlus
     public class LiveTvService : BaseTunerHost, ITunerHost
     {
         private readonly IHttpClient _httpClient;
-        private readonly ILiveTvManager _liveTvManager;
 
-        public LiveTvService(IServerConfigurationManager config, ILogger logger, IJsonSerializer jsonSerializer, IMediaEncoder mediaEncoder, IFileSystem fileSystem, IHttpClient httpClient, ILiveTvManager liveTvManager)
-            : base(config, logger, jsonSerializer, mediaEncoder, fileSystem)
+        public LiveTvService(IHttpClient httpClient, IServerApplicationHost appHost)
+            : base(appHost)
         {
             _httpClient = httpClient;
-            _liveTvManager = liveTvManager;
         }
 
         public override string Name => Plugin.StaticName;
@@ -99,7 +98,7 @@ namespace MediaBrowser.Plugins.VuPlus
 
             Logger.Info("[VuPlus] EnsureConnectionAsync Validation of config parameters completed");
 
-            string tvBouquetSRef = null;
+            string tvBouquetSRef;
 
             if (config.OnlyOneBouquet)
             {
@@ -515,23 +514,6 @@ namespace MediaBrowser.Plugins.VuPlus
             }
         }
 
-        /// <summary>
-        /// Get the live channel stream, zap to channel if required.
-        /// </summary>
-        /// <param name="cancellationToken">The CancellationToken</param>
-        /// <returns>MediaSourceInfo</returns>
-        protected override async Task<ILiveStream> GetChannelStream(TunerHostInfo tuner, ChannelInfo channel, string streamId, List<ILiveStream> currentLiveStreams, CancellationToken cancellationToken)
-        {
-            var mediaSources = await GetChannelStreamMediaSources(tuner, null, channel, cancellationToken).ConfigureAwait(false);
-            var mediaSource = mediaSources.FirstOrDefault();
-
-            return _liveTvManager.CreateLiveStream(new LiveStreamOptions
-            {
-                MediaSource = mediaSource,
-                TunerHost = tuner
-            });
-        }
-
         private string GetStreamingBaseUrl(TunerHostInfo tuner, VuPlusTunerOptions config)
         {
             var baseUrl = tuner.Url.TrimEnd('/');
@@ -555,9 +537,9 @@ namespace MediaBrowser.Plugins.VuPlus
 
             var baseUrl = GetStreamingBaseUrl(tuner, config);
 
-            var channelOid = GetTunerChannelIdFromEmbyChannelId(tuner, providerChannel.Id);
+            var vuPlusChannelId = GetTunerChannelIdFromEmbyChannelId(tuner, providerChannel.Id);
 
-            string streamUrl = string.Format("{0}/{1}", baseUrl, channelOid);
+            string streamUrl = string.Format("{0}/{1}", baseUrl, vuPlusChannelId);
             Logger.Info("[VuPlus] GetChannelStream url: {0}", streamUrl);
 
             var mediaSource = new MediaSourceInfo
@@ -599,10 +581,8 @@ namespace MediaBrowser.Plugins.VuPlus
             return true;
         }
 
-        public override async Task<List<ProgramInfo>> GetProgramsAsync(TunerHostInfo tuner, string channelId, DateTimeOffset startDateUtc, DateTimeOffset endDateUtc, CancellationToken cancellationToken)
+        protected override async Task<List<ProgramInfo>> GetProgramsInternal(TunerHostInfo tuner, string tunerChannelId, DateTimeOffset startDateUtc, DateTimeOffset endDateUtc, CancellationToken cancellationToken)
         {
-            var channelOid = GetTunerChannelIdFromEmbyChannelId(tuner, channelId);
-
             var config = GetProviderOptions<VuPlusTunerOptions>(tuner);
 
             Logger.Info("[VuPlus] Start GetProgramsAsync");
@@ -613,7 +593,7 @@ namespace MediaBrowser.Plugins.VuPlus
 
             var baseUrl = tuner.Url.TrimEnd('/');
 
-            var url = string.Format("{0}/web/epgservice?sRef={1}", baseUrl, channelOid);
+            var url = string.Format("{0}/web/epgservice?sRef={1}", baseUrl, tunerChannelId);
             Logger.Info("[VuPlus] GetProgramsAsync url: {0}", url);
 
             var options = new HttpRequestOptions()
@@ -736,7 +716,7 @@ namespace MediaBrowser.Plugins.VuPlus
                                 programInfo.ImagePath = imagePath;
                                 programInfo.ImageUrl = imageUrl;
 
-                                programInfo.ChannelId = channelId;
+                                programInfo.ChannelId = tunerChannelId;
 
                                 programInfo.Overview = e2eventdescriptionextended;
 
