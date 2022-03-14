@@ -358,7 +358,6 @@ namespace MediaBrowser.Plugins.VuPlus
                                     else
                                         channelInfo.ChannelType = ChannelType.TV;
 
-                                    channelInfo.HasImage = true;
                                     channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
 
                                     // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
@@ -478,7 +477,6 @@ namespace MediaBrowser.Plugins.VuPlus
                                 else
                                     channelInfo.ChannelType = ChannelType.TV;
 
-                                channelInfo.HasImage = true;
                                 channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
 
                                 // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
@@ -588,8 +586,7 @@ namespace MediaBrowser.Plugins.VuPlus
             Logger.Info("[VuPlus] Start GetProgramsAsync");
             await EnsureConnectionAsync(tuner, config, cancellationToken).ConfigureAwait(false);
 
-            var imagePath = "";
-            var imageUrl = "";
+            string imageUrl = null;
 
             var baseUrl = tuner.Url.TrimEnd('/');
 
@@ -712,8 +709,6 @@ namespace MediaBrowser.Plugins.VuPlus
                                     //}
                                 }
 
-                                programInfo.HasImage = true;
-                                programInfo.ImagePath = imagePath;
                                 programInfo.ImageUrl = imageUrl;
 
                                 programInfo.ChannelId = tunerChannelId;
