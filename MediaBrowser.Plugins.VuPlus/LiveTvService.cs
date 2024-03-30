@@ -85,7 +85,6 @@ namespace MediaBrowser.Plugins.VuPlus
                 Logger.Info(string.Format("[VuPlus] EnsureConnectionAsync WebInterfaceUsername: {0}", "********"));
             Logger.Info(string.Format("[VuPlus] EnsureConnectionAsync OnlyOneBouquet: {0}", config.OnlyOneBouquet));
             Logger.Info(string.Format("[VuPlus] EnsureConnectionAsync TVBouquet: {0}", config.TVBouquet));
-            Logger.Info(string.Format("[VuPlus] EnsureConnectionAsync EnableDebugLogging: {0}", config.EnableDebugLogging));
 
             if (config.OnlyOneBouquet)
             {
@@ -527,7 +526,24 @@ namespace MediaBrowser.Plugins.VuPlus
             return baseUrl.TrimEnd('/');
         }
 
-        protected override Task<List<MediaSourceInfo>> GetChannelStreamMediaSources(TunerHostInfo tuner, BaseItem dbChannnel, ChannelInfo providerChannel, CancellationToken cancellationToken)
+        protected override async Task<ILiveStream> GetChannelStream(TunerHostInfo tuner, BaseItem dbChannnel, ChannelInfo tunerChannel, string mediaSourceId, CancellationToken cancellationToken)
+        {
+            var config = GetProviderOptions<VuPlusTunerOptions>(tuner);
+            
+            //check if we need to zap to channel - single tuner
+            if (config.ZapToChannel)
+            {
+                var baseUrl = GetStreamingBaseUrl(tuner, config);
+
+                var vuPlusChannelId = GetTunerChannelIdFromEmbyChannelId(tuner, tunerChannel.Id);
+
+                await ZapToChannel(vuPlusChannelId, baseUrl, tuner, config, cancellationToken).ConfigureAwait(false);
+            }
+
+            return await base.GetChannelStream(tuner, dbChannnel, tunerChannel, mediaSourceId, cancellationToken).ConfigureAwait(false);
+        }
+
+        protected override Task<List<MediaSourceInfo>> GetChannelStreamMediaSources(TunerHostInfo tuner, BaseItem dbChannnel, ChannelInfo tunerChannel, CancellationToken cancellationToken)
         {
             var config = GetProviderOptions<VuPlusTunerOptions>(tuner);
 
@@ -535,7 +551,7 @@ namespace MediaBrowser.Plugins.VuPlus
 
             var baseUrl = GetStreamingBaseUrl(tuner, config);
 
-            var vuPlusChannelId = GetTunerChannelIdFromEmbyChannelId(tuner, providerChannel.Id);
+            var vuPlusChannelId = GetTunerChannelIdFromEmbyChannelId(tuner, tunerChannel.Id);
 
             string streamUrl = string.Format("{0}/{1}", baseUrl, vuPlusChannelId);
             Logger.Info("[VuPlus] GetChannelStream url: {0}", streamUrl);
@@ -572,6 +588,86 @@ namespace MediaBrowser.Plugins.VuPlus
             };
 
             return Task.FromResult(new List<MediaSourceInfo>() { mediaSource });
+        }
+
+
+        /// <summary>
+        /// zap to channel.
+        /// </summary>
+        /// <param name="cancellationToken">The CancellationToken</param>
+        /// <param name="vuPlusChannelId">The channel id</param>
+        /// <returns></returns>
+        public async Task ZapToChannel(string vuPlusChannelId, string baseUrl, TunerHostInfo tunerHostInfo, VuPlusTunerOptions tunerOptions, CancellationToken cancellationToken)
+        {
+            Logger.Info("[VuPlus] Start ZapToChannel");
+            await EnsureConnectionAsync(tunerHostInfo, tunerOptions, cancellationToken).ConfigureAwait(false);
+
+            var url = string.Format("{0}/web/zap?sRef={1}", baseUrl, vuPlusChannelId);
+            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ZapToChannel url: {0}", url));
+
+            var options = new HttpRequestOptions()
+            {
+                CancellationToken = cancellationToken,
+                Url = url
+            };
+
+            if (!string.IsNullOrEmpty(tunerOptions.WebInterfaceUsername))
+            {
+                string authInfo = tunerOptions.WebInterfaceUsername + ":" + tunerOptions.WebInterfacePassword;
+                authInfo = Convert.ToBase64String(Encoding.Default.GetBytes(authInfo));
+                options.RequestHeaders["Authorization"] = "Basic " + authInfo;
+            }
+
+            using (var stream = await _httpClient.Get(options).ConfigureAwait(false))
+            {
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    string xmlResponse = reader.ReadToEnd();
+                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ZapToChannel response: {0}", xmlResponse));
+
+                    try
+                    {
+                        var xml = new XmlDocument();
+                        xml.LoadXml(xmlResponse);
+
+                        XmlNodeList e2simplexmlresult = xml.GetElementsByTagName("e2simplexmlresult");
+                        foreach (XmlNode xmlNode in e2simplexmlresult)
+                        {
+                            var recordingInfo = new RecordingInfo();
+
+                            var e2state = "?";
+                            var e2statetext = "?";
+
+                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            {
+                                if (node.Name == "e2state")
+                                {
+                                    e2state = node.InnerText;
+                                }
+                                else if (node.Name == "e2statetext")
+                                {
+                                    e2statetext = node.InnerText;
+                                }
+                            }
+
+                            if (e2state != "True")
+                            {
+                                Logger.Error("[VuPlus] Failed to zap to channel.");
+                                Logger.Error(string.Format("[VuPlus] ZapToChannel e2statetext: {0}", e2statetext));
+                                throw new ApplicationException("Failed to zap to channel.");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error("[VuPlus] Failed to parse create timer information.");
+                        Logger.Error(string.Format("[VuPlus] ZapToChannel error: {0}", e.Message));
+                        throw new ApplicationException("Failed to parse zap to channel information.");
+                    }
+                }
+            }
+
+
         }
 
         public override bool SupportsGuideData(TunerHostInfo tuner)

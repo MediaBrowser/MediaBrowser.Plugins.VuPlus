@@ -32,6 +32,7 @@
         view.querySelector('.txtWebInterfaceUsername').value = providerOptions.WebInterfaceUsername || '';
         view.querySelector('.txtWebInterfacePassword').value = providerOptions.WebInterfacePassword || '';
         view.querySelector('.chkOnlyOneBouquet').checked = providerOptions.OnlyOneBouquet;
+        view.querySelector('.chkZapChannel').checked = providerOptions.ZapChannel;
         view.querySelector('.txtTVBouquet').value = providerOptions.TVBouquet || '';
     }
 
@@ -64,6 +65,7 @@
                 providerOptions.WebInterfaceUsername = view.querySelector('.txtWebInterfaceUsername').value;
                 providerOptions.WebInterfacePassword = view.querySelector('.txtWebInterfacePassword').value;
                 providerOptions.OnlyOneBouquet = view.querySelector('.chkOnlyOneBouquet').checked;
+                providerOptions.ZapChannel = view.querySelector('.chkZapChannel').checked;
                 providerOptions.TVBouquet = view.querySelector('.txtTVBouquet').value;
 
                 info.FriendlyName = page.querySelector('.txtFriendlyName').value || null;
