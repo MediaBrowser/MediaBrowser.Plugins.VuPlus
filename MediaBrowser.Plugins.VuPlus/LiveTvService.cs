@@ -147,7 +147,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string xmlResponse = reader.ReadToEnd();
-                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] InitiateSession response: {0}", xmlResponse));
+                    Logger.Info("[VuPlus] InitiateSession response: {0}", xmlResponse);
 
                     var xml = new XmlDocument();
                     xml.LoadXml(xmlResponse);
@@ -264,7 +264,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 {
 
                     string xmlResponse = reader.ReadToEnd();
-                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetChannelsAsync response: {0}", xmlResponse));
+                    Logger.Info("[VuPlus] GetChannelsAsync response: {0}", xmlResponse);
 
                     var xml = new XmlDocument();
                     xml.LoadXml(xmlResponse);
@@ -474,7 +474,7 @@ namespace MediaBrowser.Plugins.VuPlus
                         }
                         else
                         {
-                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ignoring channel {0}", e2servicereference));
+                            Logger.Debug("[VuPlus] ignoring channel {0}", e2servicereference);
                         }
                     }
                     return channelInfos;
@@ -574,7 +574,6 @@ namespace MediaBrowser.Plugins.VuPlus
             await EnsureConnectionAsync(tunerHostInfo, tunerOptions, cancellationToken).ConfigureAwait(false);
 
             var url = string.Format("{0}/web/zap?sRef={1}", baseUrl, vuPlusChannelId);
-            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ZapToChannel url: {0}", url));
 
             var options = new HttpRequestOptions()
             {
@@ -594,7 +593,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string xmlResponse = reader.ReadToEnd();
-                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ZapToChannel response: {0}", xmlResponse));
+                    Logger.Info("[VuPlus] ZapToChannel response: {0}", xmlResponse);
 
                     var xml = new XmlDocument();
                     xml.LoadXml(xmlResponse);
