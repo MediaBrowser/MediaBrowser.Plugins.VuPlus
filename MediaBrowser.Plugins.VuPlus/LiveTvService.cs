@@ -411,7 +411,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string xmlResponse = reader.ReadToEnd();
-                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetChannelsForTVBouquetAsync response: {0}", xmlResponse));
+                    Logger.Debug("[VuPlus] GetChannelsForTVBouquetAsync response: {0}", xmlResponse);
 
                     var xml = new XmlDocument();
                     xml.LoadXml(xmlResponse);
