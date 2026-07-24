@@ -149,61 +149,50 @@ namespace MediaBrowser.Plugins.VuPlus
                     string xmlResponse = reader.ReadToEnd();
                     UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] InitiateSession response: {0}", xmlResponse));
 
-                    try
+                    var xml = new XmlDocument();
+                    xml.LoadXml(xmlResponse);
+
+                    String tvBouquetReference = null;
+
+                    XmlNodeList e2services = xml.GetElementsByTagName("e2service");
+
+                    // If TV Bouquet passed find associated service reference
+                    if (!string.IsNullOrEmpty(tvBouquet))
                     {
-                        var xml = new XmlDocument();
-                        xml.LoadXml(xmlResponse);
-
-                        String tvBouquetReference = null;
-
-                        XmlNodeList e2services = xml.GetElementsByTagName("e2service");
-
-                        // If TV Bouquet passed find associated service reference
-                        if (!string.IsNullOrEmpty(tvBouquet))
+                        foreach (XmlNode xmlNode in e2services)
                         {
-                            foreach (XmlNode xmlNode in e2services)
+                            var channelInfo = new ChannelInfo()
                             {
-                                var channelInfo = new ChannelInfo()
-                                {
-                                    TunerHostId = tuner.Id
-                                };
+                                TunerHostId = tuner.Id
+                            };
 
-                                var e2servicereference = "?";
-                                var e2servicename = "?";
+                            var e2servicereference = "?";
+                            var e2servicename = "?";
 
-                                foreach (XmlNode node in xmlNode.ChildNodes)
+                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            {
+                                if (node.Name == "e2servicereference")
                                 {
-                                    if (node.Name == "e2servicereference")
-                                    {
-                                        e2servicereference = node.InnerText;
-                                    }
-                                    else if (node.Name == "e2servicename")
-                                    {
-                                        e2servicename = node.InnerText;
-                                    }
+                                    e2servicereference = node.InnerText;
                                 }
-                                if (tvBouquet == e2servicename)
+                                else if (node.Name == "e2servicename")
                                 {
-                                    tvBouquetReference = e2servicereference;
-                                    return tvBouquetReference;
+                                    e2servicename = node.InnerText;
                                 }
                             }
-                            // make sure we have found the TV Bouquet
-                            if (!string.IsNullOrEmpty(tvBouquet))
+                            if (tvBouquet == e2servicename)
                             {
-                                Logger.Error("[VuPlus] Failed to find TV Bouquet specified in VuPlus configuration.");
-                                throw new ApplicationException("Failed to find TV Bouquet specified in VuPlus configuration.");
+                                tvBouquetReference = e2servicereference;
+                                return tvBouquetReference;
                             }
                         }
-                        return tvBouquetReference;
+                        // make sure we have found the TV Bouquet
+                        if (!string.IsNullOrEmpty(tvBouquet))
+                        {
+                            throw new ApplicationException("Failed to find TV Bouquet specified in VuPlus configuration.");
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        Logger.Error("[VuPlus] Failed to parse services information.");
-                        Logger.Error(string.Format("[VuPlus] InitiateSession error: {0}", e.Message));
-                        throw new ApplicationException("Failed to connect to VuPlus.");
-                    }
-
+                    return tvBouquetReference;
                 }
             }
         }
@@ -277,118 +266,109 @@ namespace MediaBrowser.Plugins.VuPlus
                     string xmlResponse = reader.ReadToEnd();
                     UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetChannelsAsync response: {0}", xmlResponse));
 
-                    try
+                    var xml = new XmlDocument();
+                    xml.LoadXml(xmlResponse);
+
+                    List<ChannelInfo> channelInfos = new List<ChannelInfo>();
+
+                    if (string.IsNullOrEmpty(tvBouquetSRef))
                     {
-                        var xml = new XmlDocument();
-                        xml.LoadXml(xmlResponse);
+                        // Load channels from all TV Bouquets
+                        Logger.Info("[VuPlus] GetChannelsAsync for all TV Bouquets");
 
-                        List<ChannelInfo> channelInfos = new List<ChannelInfo>();
-
-                        if (string.IsNullOrEmpty(tvBouquetSRef))
+                        XmlNodeList e2services = xml.GetElementsByTagName("e2service");
+                        foreach (XmlNode xmlNode in e2services)
                         {
-                            // Load channels from all TV Bouquets
-                            Logger.Info("[VuPlus] GetChannelsAsync for all TV Bouquets");
-
-                            XmlNodeList e2services = xml.GetElementsByTagName("e2service");
-                            foreach (XmlNode xmlNode in e2services)
+                            var channelInfo = new ChannelInfo()
                             {
-                                var channelInfo = new ChannelInfo()
-                                {
-                                    TunerHostId = tuner.Id
-                                };
-                                var e2servicereference = "?";
-                                var e2servicename = "?";
+                                TunerHostId = tuner.Id
+                            };
+                            var e2servicereference = "?";
+                            var e2servicename = "?";
 
-                                foreach (XmlNode node in xmlNode.ChildNodes)
+                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            {
+                                if (node.Name == "e2servicereference")
                                 {
-                                    if (node.Name == "e2servicereference")
-                                    {
-                                        e2servicereference = node.InnerText;
-                                    }
-                                    else if (node.Name == "e2servicename")
-                                    {
-                                        e2servicename = node.InnerText;
-                                    }
+                                    e2servicereference = node.InnerText;
                                 }
-
-                                // get all channels for TV Bouquet
-                                List<ChannelInfo> channelInfosForBouquet = await GetChannelsForTVBouquetAsync(tuner, config, cancellationToken, e2servicereference).ConfigureAwait(false);
-
-                                // store all channels for TV Bouquet
-                                channelInfos.AddRange(channelInfosForBouquet);
+                                else if (node.Name == "e2servicename")
+                                {
+                                    e2servicename = node.InnerText;
+                                }
                             }
 
-                            return channelInfos;
+                            // get all channels for TV Bouquet
+                            List<ChannelInfo> channelInfosForBouquet = await GetChannelsForTVBouquetAsync(tuner, config, cancellationToken, e2servicereference).ConfigureAwait(false);
+
+                            // store all channels for TV Bouquet
+                            channelInfos.AddRange(channelInfosForBouquet);
                         }
-                        else
-                        {
-                            // Load channels for specified TV Bouquet only
-                            int count = 1;
 
-                            XmlNodeList e2services = xml.GetElementsByTagName("e2service");
-                            foreach (XmlNode xmlNode in e2services)
-                            {
-                                var channelInfo = new ChannelInfo()
-                                {
-                                    TunerHostId = tuner.Id
-                                };
-
-                                var e2servicereference = "?";
-                                var e2servicename = "?";
-
-                                foreach (XmlNode node in xmlNode.ChildNodes)
-                                {
-                                    if (node.Name == "e2servicereference")
-                                    {
-                                        e2servicereference = node.InnerText;
-                                    }
-                                    else if (node.Name == "e2servicename")
-                                    {
-                                        e2servicename = node.InnerText;
-                                    }
-                                }
-
-                                // Check whether the current element is not just a label
-                                if (!e2servicereference.StartsWith("1:64:"))
-                                {
-                                    //check for radio channel
-                                    if (e2servicereference.ToUpper().Contains("RADIO"))
-                                        channelInfo.ChannelType = ChannelType.Radio;
-                                    else
-                                        channelInfo.ChannelType = ChannelType.TV;
-
-                                    channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
-
-                                    // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
-                                    var imageName = e2servicereference.Remove(e2servicereference.Length - 1);
-                                    imageName = imageName.Replace(":", "_");
-                                    imageName = imageName + ".png";
-                                    //var imageUrl = string.Format("{0}/picon/{1}", baseUrl, imageName);
-                                    var imageUrl = string.Format("{0}/picon/{1}", baseUrlPicon, imageName);
-
-                                    //channelInfo.ImageUrl = WebUtility.UrlEncode(imageUrl);
-                                    channelInfo.ImageUrl = imageUrl;
-
-                                    channelInfo.Name = e2servicename;
-                                    channelInfo.Number = count.ToString();
-
-                                    channelInfos.Add(channelInfo);
-                                    count = count + 1;
-                                }
-                                else
-                                {
-                                    Logger.Info("[VuPlus] ignoring channel label " + e2servicereference);
-                                }
-                            }
-                        }
                         return channelInfos;
                     }
-                    catch (Exception e)
+                    else
                     {
-                        Logger.Error("[VuPlus] Failed to parse channel information.");
-                        Logger.Error(string.Format("[VuPlus] GetChannelsAsync error: {0}", e.Message));
-                        throw new ApplicationException("Failed to parse channel information.");
+                        // Load channels for specified TV Bouquet only
+                        int count = 1;
+
+                        XmlNodeList e2services = xml.GetElementsByTagName("e2service");
+                        foreach (XmlNode xmlNode in e2services)
+                        {
+                            var channelInfo = new ChannelInfo()
+                            {
+                                TunerHostId = tuner.Id
+                            };
+
+                            var e2servicereference = "?";
+                            var e2servicename = "?";
+
+                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            {
+                                if (node.Name == "e2servicereference")
+                                {
+                                    e2servicereference = node.InnerText;
+                                }
+                                else if (node.Name == "e2servicename")
+                                {
+                                    e2servicename = node.InnerText;
+                                }
+                            }
+
+                            // Check whether the current element is not just a label
+                            if (!e2servicereference.StartsWith("1:64:"))
+                            {
+                                //check for radio channel
+                                if (e2servicereference.ToUpper().Contains("RADIO"))
+                                    channelInfo.ChannelType = ChannelType.Radio;
+                                else
+                                    channelInfo.ChannelType = ChannelType.TV;
+
+                                channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
+
+                                // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
+                                var imageName = e2servicereference.Remove(e2servicereference.Length - 1);
+                                imageName = imageName.Replace(":", "_");
+                                imageName = imageName + ".png";
+                                //var imageUrl = string.Format("{0}/picon/{1}", baseUrl, imageName);
+                                var imageUrl = string.Format("{0}/picon/{1}", baseUrlPicon, imageName);
+
+                                //channelInfo.ImageUrl = WebUtility.UrlEncode(imageUrl);
+                                channelInfo.ImageUrl = imageUrl;
+
+                                channelInfo.Name = e2servicename;
+                                channelInfo.Number = count.ToString();
+
+                                channelInfos.Add(channelInfo);
+                                count = count + 1;
+                            }
+                            else
+                            {
+                                Logger.Info("[VuPlus] ignoring channel label " + e2servicereference);
+                            }
+                        }
                     }
+                    return channelInfos;
                 }
             }
         }
@@ -433,80 +413,71 @@ namespace MediaBrowser.Plugins.VuPlus
                     string xmlResponse = reader.ReadToEnd();
                     UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetChannelsForTVBouquetAsync response: {0}", xmlResponse));
 
-                    try
+                    var xml = new XmlDocument();
+                    xml.LoadXml(xmlResponse);
+
+                    List<ChannelInfo> channelInfos = new List<ChannelInfo>();
+
+                    // Load channels for specified TV Bouquet only
+
+                    int count = 1;
+
+                    XmlNodeList e2services = xml.GetElementsByTagName("e2service");
+                    foreach (XmlNode xmlNode in e2services)
                     {
-                        var xml = new XmlDocument();
-                        xml.LoadXml(xmlResponse);
-
-                        List<ChannelInfo> channelInfos = new List<ChannelInfo>();
-
-                        // Load channels for specified TV Bouquet only
-
-                        int count = 1;
-
-                        XmlNodeList e2services = xml.GetElementsByTagName("e2service");
-                        foreach (XmlNode xmlNode in e2services)
+                        var channelInfo = new ChannelInfo()
                         {
-                            var channelInfo = new ChannelInfo()
-                            {
-                                TunerHostId = tuner.Id
-                            };
+                            TunerHostId = tuner.Id
+                        };
 
-                            var e2servicereference = "?";
-                            var e2servicename = "?";
+                        var e2servicereference = "?";
+                        var e2servicename = "?";
 
-                            foreach (XmlNode node in xmlNode.ChildNodes)
+                        foreach (XmlNode node in xmlNode.ChildNodes)
+                        {
+                            if (node.Name == "e2servicereference")
                             {
-                                if (node.Name == "e2servicereference")
-                                {
-                                    e2servicereference = node.InnerText;
-                                }
-                                else if (node.Name == "e2servicename")
-                                {
-                                    e2servicename = node.InnerText;
-                                }
+                                e2servicereference = node.InnerText;
                             }
-
-                            // Check whether the current element is not just a label
-                            if (!e2servicereference.StartsWith("1:64:"))
+                            else if (node.Name == "e2servicename")
                             {
-                                //check for radio channel
-                                if (e2servicereference.Contains("radio"))
-                                    channelInfo.ChannelType = ChannelType.Radio;
-                                else
-                                    channelInfo.ChannelType = ChannelType.TV;
-
-                                channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
-
-                                // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
-                                var imageName = e2servicereference.Remove(e2servicereference.Length - 1);
-                                imageName = imageName.Replace(":", "_");
-                                imageName = imageName + ".png";
-                                //var imageUrl = string.Format("{0}/picon/{1}", baseUrl, imageName);
-                                var imageUrl = string.Format("{0}/picon/{1}", baseUrlPicon, imageName);
-
-                                //channelInfo.ImageUrl = WebUtility.UrlEncode(imageUrl);
-                                channelInfo.ImageUrl = imageUrl;
-
-                                channelInfo.Name = e2servicename;
-                                channelInfo.Number = count.ToString();
-
-                                channelInfos.Add(channelInfo);
-                                count = count + 1;
-                            }
-                            else
-                            {
-                                UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ignoring channel {0}", e2servicereference));
+                                e2servicename = node.InnerText;
                             }
                         }
-                        return channelInfos;
+
+                        // Check whether the current element is not just a label
+                        if (!e2servicereference.StartsWith("1:64:"))
+                        {
+                            //check for radio channel
+                            if (e2servicereference.Contains("radio"))
+                                channelInfo.ChannelType = ChannelType.Radio;
+                            else
+                                channelInfo.ChannelType = ChannelType.TV;
+
+                            channelInfo.Id = CreateEmbyChannelId(tuner, e2servicereference);
+
+                            // image name is name is e2servicereference with last char removed, then replace all : with _, then add .png
+                            var imageName = e2servicereference.Remove(e2servicereference.Length - 1);
+                            imageName = imageName.Replace(":", "_");
+                            imageName = imageName + ".png";
+                            //var imageUrl = string.Format("{0}/picon/{1}", baseUrl, imageName);
+                            var imageUrl = string.Format("{0}/picon/{1}", baseUrlPicon, imageName);
+
+                            //channelInfo.ImageUrl = WebUtility.UrlEncode(imageUrl);
+                            channelInfo.ImageUrl = imageUrl;
+
+                            channelInfo.Name = e2servicename;
+                            channelInfo.Number = count.ToString();
+
+                            channelInfos.Add(channelInfo);
+                            count = count + 1;
+                        }
+                        else
+                        {
+                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ignoring channel {0}", e2servicereference));
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        Logger.Error("[VuPlus] Failed to parse channel information.");
-                        Logger.Error(string.Format("[VuPlus] GetChannelsForTVBouquetAsync error: {0}", e.Message));
-                        throw new ApplicationException("Failed to parse channel information.");
-                    }
+                    return channelInfos;
                 }
             }
         }
@@ -625,44 +596,34 @@ namespace MediaBrowser.Plugins.VuPlus
                     string xmlResponse = reader.ReadToEnd();
                     UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] ZapToChannel response: {0}", xmlResponse));
 
-                    try
+                    var xml = new XmlDocument();
+                    xml.LoadXml(xmlResponse);
+
+                    XmlNodeList e2simplexmlresult = xml.GetElementsByTagName("e2simplexmlresult");
+                    foreach (XmlNode xmlNode in e2simplexmlresult)
                     {
-                        var xml = new XmlDocument();
-                        xml.LoadXml(xmlResponse);
+                        var recordingInfo = new RecordingInfo();
 
-                        XmlNodeList e2simplexmlresult = xml.GetElementsByTagName("e2simplexmlresult");
-                        foreach (XmlNode xmlNode in e2simplexmlresult)
+                        var e2state = "?";
+                        var e2statetext = "?";
+
+                        foreach (XmlNode node in xmlNode.ChildNodes)
                         {
-                            var recordingInfo = new RecordingInfo();
-
-                            var e2state = "?";
-                            var e2statetext = "?";
-
-                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            if (node.Name == "e2state")
                             {
-                                if (node.Name == "e2state")
-                                {
-                                    e2state = node.InnerText;
-                                }
-                                else if (node.Name == "e2statetext")
-                                {
-                                    e2statetext = node.InnerText;
-                                }
+                                e2state = node.InnerText;
                             }
-
-                            if (e2state != "True")
+                            else if (node.Name == "e2statetext")
                             {
-                                Logger.Error("[VuPlus] Failed to zap to channel.");
-                                Logger.Error(string.Format("[VuPlus] ZapToChannel e2statetext: {0}", e2statetext));
-                                throw new ApplicationException("Failed to zap to channel.");
+                                e2statetext = node.InnerText;
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        Logger.Error("[VuPlus] Failed to parse create timer information.");
-                        Logger.Error(string.Format("[VuPlus] ZapToChannel error: {0}", e.Message));
-                        throw new ApplicationException("Failed to parse zap to channel information.");
+
+                        if (!string.Equals(e2state, "true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            Logger.Error(string.Format("[VuPlus] ZapToChannel e2statetext: {0}", e2statetext));
+                            throw new ApplicationException("Failed to zap to channel.");
+                        }
                     }
                 }
             }
@@ -709,147 +670,138 @@ namespace MediaBrowser.Plugins.VuPlus
                     string xmlResponse = reader.ReadToEnd();
                     UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync response: {0}", xmlResponse));
 
-                    try
+                    var xml = new XmlDocument();
+                    xml.LoadXml(xmlResponse);
+
+                    List<ProgramInfo> programInfos = new List<ProgramInfo>();
+
+                    int count = 1;
+
+                    XmlNodeList e2event = xml.GetElementsByTagName("e2event");
+                    foreach (XmlNode xmlNode in e2event)
                     {
-                        var xml = new XmlDocument();
-                        xml.LoadXml(xmlResponse);
+                        var programInfo = new ProgramInfo();
 
-                        List<ProgramInfo> programInfos = new List<ProgramInfo>();
+                        var e2eventid = "?";
+                        var e2eventstart = "?";
+                        var e2eventduration = "?";
+                        var e2eventcurrenttime = "?";
+                        var e2eventtitle = "?";
+                        var e2eventdescription = "?";
+                        var e2eventdescriptionextended = "?";
+                        var e2eventservicereference = "?";
+                        var e2eventservicename = "?";
 
-                        int count = 1;
-
-                        XmlNodeList e2event = xml.GetElementsByTagName("e2event");
-                        foreach (XmlNode xmlNode in e2event)
+                        foreach (XmlNode node in xmlNode.ChildNodes)
                         {
-                            var programInfo = new ProgramInfo();
-
-                            var e2eventid = "?";
-                            var e2eventstart = "?";
-                            var e2eventduration = "?";
-                            var e2eventcurrenttime = "?";
-                            var e2eventtitle = "?";
-                            var e2eventdescription = "?";
-                            var e2eventdescriptionextended = "?";
-                            var e2eventservicereference = "?";
-                            var e2eventservicename = "?";
-
-                            foreach (XmlNode node in xmlNode.ChildNodes)
+                            if (node.Name == "e2eventid")
                             {
-                                if (node.Name == "e2eventid")
-                                {
-                                    e2eventid = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventstart")
-                                {
-                                    e2eventstart = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventduration")
-                                {
-                                    e2eventduration = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventcurrenttime")
-                                {
-                                    e2eventcurrenttime = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventtitle")
-                                {
-                                    e2eventtitle = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventdescription")
-                                {
-                                    e2eventdescription = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventdescriptionextended")
-                                {
-                                    e2eventdescriptionextended = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventservicereference")
-                                {
-                                    e2eventservicereference = node.InnerText;
-                                }
-                                else if (node.Name == "e2eventservicename")
-                                {
-                                    e2eventservicename = node.InnerText;
-                                }
+                                e2eventid = node.InnerText;
                             }
-
-                            long sdated = Int64.Parse(e2eventstart);
-                            var sdate = DateTimeOffset.FromUnixTimeSeconds(sdated);
-
-                            // Check whether the current element is within the time range passed
-                            if (sdate > endDateUtc)
+                            else if (node.Name == "e2eventstart")
                             {
-                                UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync epc full ending without adding channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
-                                return programInfos;
+                                e2eventstart = node.InnerText;
                             }
-                            else
+                            else if (node.Name == "e2eventduration")
                             {
-                                UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync adding program for channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
-                                //programInfo.HasImage = false;
-                                //programInfo.ImagePath = null;
-                                //programInfo.ImageUrl = null;
-                                if (count == 1)
-                                {
-                                    //foreach (ChannelInfo channelInfo in tvChannelInfos)
-                                    //{
-                                    //    if (channelInfo.Name == e2eventservicename)
-                                    //    {
-                                    //        UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync match on channel name : {0}", e2eventservicename));
-                                    //        //programInfo.HasImage = true;
-                                    //        //programInfo.ImagePath = channelInfo.ImagePath;
-                                    //        //programInfo.ImageUrl = channelInfo.ImageUrl;
-                                    //        imagePath = channelInfo.ImagePath;
-                                    //        imageUrl = channelInfo.ImageUrl;
-                                    //        break;
-                                    //    }
-                                    //}
-                                }
-
-                                programInfo.ImageUrl = imageUrl;
-
-                                programInfo.ChannelId = tunerChannelId;
-
-                                programInfo.Overview = e2eventdescriptionextended;
-
-                                long edated = Int64.Parse(e2eventstart) + Int64.Parse(e2eventduration);
-                                var edate = DateTimeOffset.FromUnixTimeSeconds(edated);
-
-                                programInfo.StartDate = sdate.ToUniversalTime();
-                                programInfo.EndDate = edate.ToUniversalTime();
-
-                                programInfo.ShowId = e2eventid;
-                                programInfo.Id = GetProgramEntryId(programInfo.ShowId, programInfo.StartDate, programInfo.ChannelId);
-
-                                List<String> genre = new List<String>();
-                                genre.Add("Unknown");
-                                programInfo.Genres = genre;
-
-                                //programInfo.OriginalAirDate = null;
-                                programInfo.Name = e2eventtitle;
-                                //programInfo.OfficialRating = null;
-                                //programInfo.CommunityRating = null;
-                                //programInfo.EpisodeTitle = null;
-                                //programInfo.Audio = null;
-                                //programInfo.IsHD = false;
-                                //programInfo.IsRepeat = false;
-                                //programInfo.IsSeries = false;
-                                //programInfo.IsNews = false;
-                                //programInfo.IsMovie = false;
-                                //programInfo.IsKids = false;
-                                //programInfo.IsSports = false;
-
-                                programInfos.Add(programInfo);
-                                count = count + 1;
+                                e2eventduration = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventcurrenttime")
+                            {
+                                e2eventcurrenttime = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventtitle")
+                            {
+                                e2eventtitle = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventdescription")
+                            {
+                                e2eventdescription = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventdescriptionextended")
+                            {
+                                e2eventdescriptionextended = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventservicereference")
+                            {
+                                e2eventservicereference = node.InnerText;
+                            }
+                            else if (node.Name == "e2eventservicename")
+                            {
+                                e2eventservicename = node.InnerText;
                             }
                         }
-                        return programInfos;
+
+                        long sdated = Int64.Parse(e2eventstart);
+                        var sdate = DateTimeOffset.FromUnixTimeSeconds(sdated);
+
+                        // Check whether the current element is within the time range passed
+                        if (sdate > endDateUtc)
+                        {
+                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync epc full ending without adding channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
+                            return programInfos;
+                        }
+                        else
+                        {
+                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync adding program for channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
+                            //programInfo.HasImage = false;
+                            //programInfo.ImagePath = null;
+                            //programInfo.ImageUrl = null;
+                            if (count == 1)
+                            {
+                                //foreach (ChannelInfo channelInfo in tvChannelInfos)
+                                //{
+                                //    if (channelInfo.Name == e2eventservicename)
+                                //    {
+                                //        UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync match on channel name : {0}", e2eventservicename));
+                                //        //programInfo.HasImage = true;
+                                //        //programInfo.ImagePath = channelInfo.ImagePath;
+                                //        //programInfo.ImageUrl = channelInfo.ImageUrl;
+                                //        imagePath = channelInfo.ImagePath;
+                                //        imageUrl = channelInfo.ImageUrl;
+                                //        break;
+                                //    }
+                                //}
+                            }
+
+                            programInfo.ImageUrl = imageUrl;
+
+                            programInfo.ChannelId = tunerChannelId;
+
+                            programInfo.Overview = e2eventdescriptionextended;
+
+                            long edated = Int64.Parse(e2eventstart) + Int64.Parse(e2eventduration);
+                            var edate = DateTimeOffset.FromUnixTimeSeconds(edated);
+
+                            programInfo.StartDate = sdate.ToUniversalTime();
+                            programInfo.EndDate = edate.ToUniversalTime();
+
+                            programInfo.ShowId = e2eventid;
+                            programInfo.Id = GetProgramEntryId(programInfo.ShowId, programInfo.StartDate, programInfo.ChannelId);
+
+                            List<String> genre = new List<String>();
+                            genre.Add("Unknown");
+                            programInfo.Genres = genre;
+
+                            //programInfo.OriginalAirDate = null;
+                            programInfo.Name = e2eventtitle;
+                            //programInfo.OfficialRating = null;
+                            //programInfo.CommunityRating = null;
+                            //programInfo.EpisodeTitle = null;
+                            //programInfo.Audio = null;
+                            //programInfo.IsHD = false;
+                            //programInfo.IsRepeat = false;
+                            //programInfo.IsSeries = false;
+                            //programInfo.IsNews = false;
+                            //programInfo.IsMovie = false;
+                            //programInfo.IsKids = false;
+                            //programInfo.IsSports = false;
+
+                            programInfos.Add(programInfo);
+                            count = count + 1;
+                        }
                     }
-                    catch (Exception e)
-                    {
-                        Logger.Error("[VuPlus] Failed to parse program information.");
-                        Logger.Error(string.Format("[VuPlus] GetProgramsAsync error: {0}", e.Message));
-                        throw new ApplicationException("Failed to parse channel information.");
-                    }
+                    return programInfos;
                 }
             }
         }
