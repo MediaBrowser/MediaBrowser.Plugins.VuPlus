@@ -9,7 +9,6 @@ using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.MediaInfo;
 using MediaBrowser.Model.Net;
 using MediaBrowser.Model.Serialization;
-using MediaBrowser.Plugins.VuPlus.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -667,7 +666,7 @@ namespace MediaBrowser.Plugins.VuPlus
                 using (StreamReader reader = new StreamReader(stream))
                 {
                     string xmlResponse = reader.ReadToEnd();
-                    UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync response: {0}", xmlResponse));
+                    //UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync response: {0}", xmlResponse));
 
                     var xml = new XmlDocument();
                     xml.LoadXml(xmlResponse);
@@ -737,12 +736,12 @@ namespace MediaBrowser.Plugins.VuPlus
                         // Check whether the current element is within the time range passed
                         if (sdate > endDateUtc)
                         {
-                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync epc full ending without adding channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
+                            Logger.Debug("[VuPlus] GetProgramsAsync epc full ending without adding channel name : {0} program : {1}", e2eventservicename, e2eventtitle);
                             return programInfos;
                         }
                         else
                         {
-                            UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync adding program for channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
+                            //UtilsHelper.DebugInformation(Logger, string.Format("[VuPlus] GetProgramsAsync adding program for channel name : {0} program : {1}", e2eventservicename, e2eventtitle));
                             //programInfo.HasImage = false;
                             //programInfo.ImagePath = null;
                             //programInfo.ImageUrl = null;
